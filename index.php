@@ -18,27 +18,23 @@ const SINGLE_MOVIE_URL = 'https://api.themoviedb.org/3/movie/76341?api_key=' . M
 const GENRES_URL = 'https://api.themoviedb.org/3/genre/movie/list?api_key=' . MOVIES_API_KEY . '&language=ru-RU';
 const MOVIES_POSTER_URL = 'https://image.tmdb.org/t/p/w500';
 const SEARCH_FOR_GENRE_URL = 'https://api.themoviedb.org/3/discover/movie?api_key=' . MOVIES_API_KEY . 'efc0&language=ru-RU&region=RU&sort_by=popularity.desc&include_adult=false&include_video=false&with_genres=';
+const SEARCH_FOR_SINGLE_MOVIE_URL = 'https://api.themoviedb.org/3/discover/movie?api_key=8493300e4fdc02b9ad360b1ebb10efc0&language=ru-RU&region=RU&sort_by=popularity.desc&include_adult=false&include_video=false';
 
-// GET RANDOM MOVIE FROM DB
-$singleMovieID = rand(30, 500);
-$singleMovieUrl = 'https://api.themoviedb.org/3/movie/' . $singleMovieID . '?api_key=' . MOVIES_API_KEY . '&language=ru-RU';
+// GET RANDOM MOVIE
+$singleMovieResponse = file_get_contents(SEARCH_FOR_SINGLE_MOVIE_URL . '&page=' . rand(1, 50));
 
-$singleMovieResponse = file_get_contents($singleMovieUrl);
-
-// IF the singleMovieID give as a null movie response
-while (!$singleMovieResponse) {
-    $singleMovieUrl = 'https://api.themoviedb.org/3/movie/' . rand(30, 500) . '?api_key=' . MOVIES_API_KEY . '&language=ru-RU';
-    $singleMovieResponse = file_get_contents($singleMovieUrl);
-}
+$singleMovieID = rand(0, 19);
+$singleMovieResponseData = json_decode($singleMovieResponse, true);
 
 $singleMovieResponseData = json_decode($singleMovieResponse, true);
 
 // GET SINGLE MOVIE DATA
-$singleMovieTitle = $singleMovieResponseData['title'] ?? '';
-$singleMoviePoster = $singleMovieResponseData['poster_path'] ?? '';
-$singleMovieVoteAverage = $singleMovieResponseData['vote_average'] ?? '';
-$singleMovieOverview = $singleMovieResponseData['overview'] ?? '';
-$singleMovieReleaseDate = $singleMovieResponseData['release_date'] ?? '';
+$singleMovieTitle = $singleMovieResponseData['results'][$singleMovieID]['title'] ?? '';
+$singleMoviePoster = $singleMovieResponseData['results'][$singleMovieID]['poster_path'] ?? '';
+$singleMovieVoteAverage = $singleMovieResponseData['results'][$singleMovieID]['vote_average'] ?? '';
+$singleMovieOverview = $singleMovieResponseData['results'][$singleMovieID]['overview'] ?? '';
+$singleMovieReleaseDate = $singleMovieResponseData['results'][$singleMovieID]['release_date'] ?? '';
+$singleMovieGenre = $singleMovieResponseData['results'][$singleMovieID]['genre_ids'] ?? '';
 
 if (!isset($_REQUEST)) {
     return;
@@ -84,18 +80,27 @@ function getMovieByGenre($payload)
 }
 
 //function getSingleMovie($title, $poster, $vote_average, $overview, $releaseDate, $peer_id, $keyboard)
-function getSingleMovie($title, $vote_average, $overview, $releaseDate, $peer_id, $keyboard)
+function getSingleMovie($title, $vote_average, $overview, $releaseDate, $genres, $peer_id, $keyboard)
 {
+    $movieGenres = '';
+
+    foreach ($genres as $genre) {
+        $movieGenres .= localizeGenreID($genre) . ', ';
+    }
+    $movieGenres = rtrim($movieGenres, ', ');
     if ($overview !== '') {
         $message = $title . '<br>' .
+            'Жанры: ' . $movieGenres . '<br>' .
             'Оценка: ' . $vote_average . '<br>' .
             'Дата выхода: ' . $releaseDate . '<br>' .
             'Описание: ' . $overview;
     } else {
         $message = $title . '<br>' .
+            'Жанры: ' . $movieGenres . '<br>' .
             'Оценка: ' . $vote_average . '<br>' .
             'Дата выхода: ' . $releaseDate . '<br>';
     }
+
     request($message, $peer_id, $keyboard, '');
 }
 
@@ -221,7 +226,7 @@ switch ($data->type) {
         // CHECK THE BUTTON PRESSED
         switch ($payload) {
             case SINGLE_MOVIE:
-                getSingleMovie($singleMovieTitle, $singleMovieVoteAverage, $singleMovieOverview, $singleMovieReleaseDate, $peer_id, $defaultKeyboard);
+                getSingleMovie($singleMovieTitle, $singleMovieVoteAverage, $singleMovieOverview, $singleMovieReleaseDate, $singleMovieGenre, $peer_id, $defaultKeyboard);
                 break;
             case GENRES:
                 getGenres($peer_id, $genresKeyboard);
